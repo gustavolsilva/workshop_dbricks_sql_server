@@ -5,10 +5,36 @@
 # MAGIC **Roteiro Executivo e Técnico | BRQ Digital Solutions**
 # MAGIC
 # MAGIC ## Objetivo do Workshop
-# MAGIC Este workshop demonstra uma jornada ponta a ponta saindo de um Azure SQL Database e chegando a uma arquitetura Medallion no Databricks com Unity Catalog. A proposta é mostrar para desenvolvedores como aplicar organização em camadas, segurança com Azure Key Vault, orientação a objetos em PySpark, publicação de tabelas governadas no catálogo e orquestração operacional com Job.
+# MAGIC Este workshop mostra, de forma simples, como sair de um banco SQL Server na Azure e chegar a uma arquitetura Medallion no Databricks com Unity Catalog. A ideia é apresentar uma jornada ponta a ponta, com segurança, organização em camadas e automação, mas em uma linguagem acessível também para quem não é especialista em engenharia de dados.
 # MAGIC
-# MAGIC ## O que já foi implementado
-# MAGIC * **Origem relacional:** Azure SQL Database `db_adventureworks_lt` no servidor `svlabgus.database.windows.net`.
+# MAGIC ## Requisitos do Lab
+# MAGIC Antes de executar o laboratório, considerar os pré-requisitos abaixo.
+# MAGIC
+# MAGIC * Estar em uma cloud provider, no nosso exemplo a Azure
+# MAGIC * Ter um servidor SQL Server disponível
+# MAGIC * Criar uma database de exemplo, no nosso caso `AdventureWorksLT`
+# MAGIC * Criar um Azure Key Vault para armazenar o nome do database e a senha de acesso
+# MAGIC * Criar uma instância do Databricks
+# MAGIC * Configurar no Secret Scope do Databricks a integração com o Azure Key Vault
+# MAGIC
+# MAGIC ## Overview da Plataforma Databricks
+# MAGIC Para contextualizar o laboratório, vale apresentar rapidamente a plataforma Databricks e o papel de cada componente dentro da solução.
+# MAGIC
+# MAGIC * **Workspace:** é o espaço de trabalho onde ficam notebooks, jobs, arquivos, consultas e dashboards. É o lugar onde as pessoas constroem, organizam e acompanham a solução.
+# MAGIC * **Compute:** é o recurso de processamento que executa os notebooks e jobs. Em termos simples, é a “máquina” que faz o trabalho pesado.
+# MAGIC * **Databricks Runtime:** é o ambiente pronto para uso com Spark e bibliotecas integradas. Ele simplifica a execução de tarefas de dados, análise e engenharia.
+# MAGIC * **Notebooks:** são os documentos interativos onde escrevemos código, documentação e comentários. No workshop, eles mostram cada etapa do processo.
+# MAGIC * **Jobs:** são usados para automatizar a execução. Eles ajudam a rodar tarefas na ordem correta, monitorar o andamento e repetir a execução quando necessário.
+# MAGIC * **Unity Catalog:** é a camada de organização e governança dos dados. Ele ajuda a manter tabelas, schemas e catálogos bem estruturados e seguros.
+# MAGIC * **Delta Lake:** é a tecnologia usada nas tabelas analíticas para garantir mais confiabilidade, consistência e controle das mudanças nos dados.
+# MAGIC * **Secret Scope:** é o recurso que permite usar credenciais com segurança, sem colocar usuário ou senha diretamente no código.
+# MAGIC * **Integração com Azure Key Vault:** permite guardar segredos fora do notebook e acessá-los de forma segura no Databricks.
+# MAGIC * **Lakehouse / Arquitetura Medallion:** é a forma de organizar os dados em camadas Bronze, Silver e Gold, facilitando a evolução do dado bruto até o dado pronto para análise.
+# MAGIC
+# MAGIC Uma forma simples de explicar a plataforma durante o workshop é dizer que o Databricks reúne, em um único ambiente, desenvolvimento, processamento, governança e operação. No contexto deste laboratório, ele conecta a origem SQL Server, protege credenciais com Key Vault e Secret Scope, processa os dados com Spark e publica tabelas prontas para consumo analítico.
+# MAGIC
+# MAGIC ## A implementação que está pronta é:
+# MAGIC * **Origem relacional:** Azure SQL Database `db_adventureworks_lt` no servidor `seuservidor.database.windows.net`.
 # MAGIC * **Segurança:** Azure Key Vault `kvault-adventureworks` com os secrets `sql-user` e `sql-password`.
 # MAGIC * **Integração no Databricks:** Secret Scope `kvault-adventureworks` apontando para o Key Vault.
 # MAGIC * **Catálogo utilizado no workshop:** `db_lab_brq`.
@@ -21,25 +47,25 @@
 # MAGIC * **Encadeamento operacional atual:** `Ingestao_Tables_Azure_SQL_Server_Bronze` -> `Transformacao_Tables_Silver` -> `Agregacao_Tables_Gold`.
 # MAGIC
 # MAGIC ## Arquitetura apresentada
-# MAGIC 1. O notebook solicita credenciais via `dbutils.secrets.get(...)` usando o Secret Scope.
-# MAGIC 2. O Secret Scope resolve a autenticação contra o Azure Key Vault sem expor credenciais no código.
-# MAGIC 3. O Spark lê os dados do Azure SQL Database por JDBC.
-# MAGIC 4. Os dados são persistidos no Unity Catalog com nomes lógicos no formato `catalog.schema.table`.
-# MAGIC 5. Cada camada aplica uma responsabilidade específica:
-# MAGIC    * **Bronze:** ingestão bruta com `_ingestion_time`
-# MAGIC    * **Silver:** limpeza, deduplicação e padronização
-# MAGIC    * **Gold:** agregações orientadas ao consumo analítico
-# MAGIC 6. A orquestração do fluxo foi consolidada em um Job para garantir sequência, retentativa operacional e visibilidade de execução ponta a ponta.
+# MAGIC 1. O notebook busca as credenciais com segurança usando o Secret Scope.
+# MAGIC 2. O Secret Scope se conecta ao Azure Key Vault sem expor usuário e senha no código.
+# MAGIC 3. O Spark lê os dados do Azure SQL Database via JDBC.
+# MAGIC 4. Os dados são publicados no Unity Catalog com nomes organizados no formato `catalog.schema.table`.
+# MAGIC 5. Cada camada tem um papel claro:
+# MAGIC    * **Bronze:** recebe os dados brutos vindos da origem
+# MAGIC    * **Silver:** organiza, limpa e padroniza os dados
+# MAGIC    * **Gold:** entrega dados prontos para consumo analítico
+# MAGIC 6. Todo esse fluxo pode ser executado de forma sequencial por um Job, trazendo mais controle e previsibilidade.
 # MAGIC
 # MAGIC ## Orquestração executiva já implementada
-# MAGIC O workshop agora permite mostrar não apenas a construção das camadas, mas também como o processo é executado de forma coordenada em produção. O Job [jb_ingestion_sql_server_to_databricks](#job-910129648162452) materializa essa visão ao encadear ingestão, transformação e agregação em três tarefas dependentes, respeitando a ordem natural do pipeline.
+# MAGIC O workshop agora mostra não apenas como construir as camadas, mas também como colocar esse processo para rodar de forma organizada. O Job [jb_ingestion_sql_server_to_databricks](#job-910129648162452) encadeia ingestão, transformação e agregação em três tarefas dependentes, respeitando a ordem natural do pipeline.
 # MAGIC
-# MAGIC Do ponto de vista executivo, isso traz benefícios claros:
-# MAGIC * previsibilidade operacional, porque cada etapa só inicia quando a anterior termina com sucesso
-# MAGIC * rastreabilidade, porque cada run mostra onde começou, onde terminou e em qual tarefa ocorreu eventual falha
-# MAGIC * governança, porque o fluxo deixa de depender de execuções manuais isoladas
-# MAGIC * capacidade de retentativa, porque uma falha transitória pode ser reprocessada sem refazer toda a narrativa do workshop manualmente
-# MAGIC * prontidão para produção, porque o mesmo desenho usado na demonstração já se aproxima do modelo de operação real
+# MAGIC Em uma linguagem mais simples, isso significa:
+# MAGIC * cada etapa roda na hora certa
+# MAGIC * fica fácil saber onde uma execução começou, terminou ou falhou
+# MAGIC * o processo deixa de depender apenas de execução manual
+# MAGIC * uma falha transitória pode ser reprocessada com mais facilidade
+# MAGIC * a demonstração já se aproxima de um cenário real de operação
 # MAGIC
 # MAGIC ## Agenda sugerida do Workshop
 # MAGIC 1. **Contexto e arquitetura (15 min)**
@@ -77,7 +103,7 @@
 # MAGIC 7. Ao final da run, o usuário pode inspecionar a execução por tarefa, revisar duração, confirmar sucesso e usar as notificações por e-mail como mecanismo adicional de acompanhamento.
 # MAGIC
 # MAGIC ## Mensagem principal do Workshop
-# MAGIC O foco não é apenas mover dados, mas mostrar boas práticas de engenharia de software em dados: encapsulamento com classes, separação de responsabilidades por camada, segurança sem credenciais em texto claro, publicação de ativos reutilizáveis no Unity Catalog e orquestração como parte integrante da solução.
+# MAGIC A principal mensagem do workshop é que não estamos apenas movendo dados. Estamos mostrando como montar uma solução organizada, segura e preparada para crescer, usando boas práticas desde a origem até a camada analítica.
 # MAGIC
 # MAGIC ## Evolução recomendada para a demo
 # MAGIC O workshop já foi expandido para múltiplas tabelas do AdventureWorks, o que permite mostrar um fluxo mais realista de ponta a ponta.
@@ -108,7 +134,14 @@
 # MAGIC A principal ponte para produção passa agora por ampliar o escopo do mesmo desenho: adicionar agenda, novos domínios, cargas incrementais, validações adicionais de qualidade e alertas operacionais mais específicos.
 # MAGIC
 # MAGIC ## Resultado esperado na apresentação
-# MAGIC Ao final, o participante deve entender como sair de uma base transacional no Azure SQL e entregar tabelas prontas para consumo analítico no Databricks, com uma fundação que já evolui naturalmente para automação, monitoramento e novas cargas incrementais.
+# MAGIC Ao final, a expectativa é que mesmo uma pessoa com pouca familiaridade técnica consiga entender a lógica do processo: os dados saem de uma base transacional, passam por etapas de organização e qualidade e chegam a tabelas prontas para análise dentro do Databricks.
+# MAGIC
+# MAGIC ## Onde aprofundar o conteúdo
+# MAGIC Para quem quiser ir além da apresentação, vale deixar caminhos claros de estudo e consulta.
+# MAGIC
+# MAGIC * **Documentação oficial Databricks:** melhor ponto de consulta para conceitos, arquitetura, setup e boas práticas
+# MAGIC * **Microsoft Learn / Azure Databricks:** útil para temas ligados ao ecossistema Azure, integração com Key Vault e conectividade com Azure SQL
+# MAGIC * **Databricks Academy (Partner):** recomendada para quem quiser fazer trilhas de capacitação, cursos e aprofundamento prático na plataforma
 # MAGIC
 # MAGIC ## Literatura e referências oficiais da Databricks
 # MAGIC Para apoiar o workshop com material oficial, use as referências abaixo como leitura complementar e base conceitual.
@@ -120,9 +153,39 @@
 # MAGIC * **Azure Key Vault-backed secret scope:** [Create an Azure Key Vault-backed secret scope](https://learn.microsoft.com/en-us/azure/databricks/security/secrets/index/)
 # MAGIC * **Conexão com Azure SQL e JDBC:** [Connect to data sources from Azure Databricks](https://learn.microsoft.com/en-us/azure/databricks/scenarios/databricks-connect-to-data-sources/) e [JDBC connection](https://learn.microsoft.com/en-us/azure/databricks/connect/jdbc-connection/)
 # MAGIC * **Arquiteturas de referência da plataforma:** [Databricks reference architectures](https://learn.microsoft.com/en-us/azure/databricks/lakehouse-architecture/reference/)
+# MAGIC * **Databricks Academy (Partner):** portal indicado para trilhas e treinamentos complementares voltados a parceiros
 # MAGIC
 # MAGIC ## Sugestão de uso dessas referências no workshop
 # MAGIC * Antes da demo: usar a documentação de arquitetura Medallion e Delta Lake para nivelar conceitos
 # MAGIC * Durante a parte de setup: usar a documentação de Secrets e Azure Key Vault-backed secret scope
 # MAGIC * Durante a parte de ingestão: usar a documentação de conexão com fontes externas por JDBC
-# MAGIC * No encerramento: apontar Unity Catalog, Jobs e arquiteturas de referência como próximos passos de governança e evolução da solução
+# MAGIC * Ao final: indicar a documentação oficial e a Databricks Academy (Partner) para quem quiser se aprofundar
+# MAGIC
+# MAGIC ## Reset do ambiente para o workshop
+# MAGIC Para reexecutar a demonstração do zero amanhã, use primeiro o drop das tabelas analíticas e depois avance até a camada bruta. Assim, a ordem respeita a dependência natural entre Gold, Silver e Bronze.
+# MAGIC
+# MAGIC Execute o bloco abaixo em uma célula `%sql` quando quiser limpar o ambiente:
+# MAGIC
+# MAGIC ```sql
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.gold.sales_summary_by_day;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.gold.sales_summary_by_customer;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.gold.product_summary_by_color;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.gold.customer_summary_by_company;
+# MAGIC
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.silver.adventureworks_salesorder_details;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.silver.adventureworks_salesorder_headers;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.silver.adventureworks_products;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.silver.adventureworks_addresses;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.silver.adventureworks_customers;
+# MAGIC
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.bronze.adventureworks_salesorder_details;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.bronze.adventureworks_salesorder_headers;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.bronze.adventureworks_products;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.bronze.adventureworks_addresses;
+# MAGIC DROP TABLE IF EXISTS db_lab_brq.bronze.adventureworks_customers;
+# MAGIC ```
+# MAGIC
+# MAGIC Observações para a apresentação:
+# MAGIC * o Job [jb_ingestion_sql_server_to_databricks](#job-910129648162452) pode ser mantido; não é necessário recriá-lo
+# MAGIC * o reset remove apenas as tabelas publicadas no catálogo, preservando notebooks, Job, secrets e configuração do ambiente
+# MAGIC * após o drop, basta executar novamente Bronze, Silver e Gold para reconstruir toda a trilha do workshop
