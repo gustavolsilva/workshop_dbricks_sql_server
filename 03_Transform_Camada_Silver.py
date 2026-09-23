@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# ///
 # DBTITLE 1,Import Libs
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, trim, lower, upper
@@ -17,12 +21,22 @@ class SilverTransformer:
         self.catalog = catalog
 
     def _transform_customers(self, df_bronze):
+        """
+        Description: Transforma a tabela bronze de customers em tabela silver 
+        Input: df_bronze: dataframe da tabela bronze
+        Output: dataframe da tabela silver 
+        """
         return df_bronze.dropDuplicates(["CustomerID"]) \
             .filter(col("EmailAddress").isNotNull()) \
             .withColumn("EmailAddress", lower(trim(col("EmailAddress")))) \
             .withColumn("CompanyName", trim(col("CompanyName")))
 
     def _transform_addresses(self, df_bronze):
+        """
+        Description: Transforma a tabela bronze de addresses em tabela silver 
+        Input: df_bronze: dataframe da tabela bronze
+        Output: dataframe da tabela silver
+        """
         return df_bronze.dropDuplicates(["AddressID"]) \
             .filter(col("AddressLine1").isNotNull()) \
             .withColumn("AddressLine1", trim(col("AddressLine1"))) \
@@ -33,6 +47,11 @@ class SilverTransformer:
             .withColumn("PostalCode", trim(col("PostalCode")))
 
     def _transform_products(self, df_bronze):
+        """
+        Description: Transforma a tabela bronze de products em tabela silver 
+        Input: df_bronze: dataframe da tabela bronze
+        Output: dataframe da tabela silver
+        """
         return df_bronze.dropDuplicates(["ProductID"]) \
             .filter(col("Name").isNotNull()) \
             .withColumn("Name", trim(col("Name"))) \
@@ -40,6 +59,11 @@ class SilverTransformer:
             .withColumn("Color", trim(col("Color")))
 
     def _transform_salesorder_headers(self, df_bronze):
+        """
+        Description: Transforma a tabela bronze de salesorder_headers em tabela silver 
+        Input: df_bronze: dataframe da tabela bronze
+        Output: dataframe da tabela silver
+        """
         return df_bronze.dropDuplicates(["SalesOrderID"]) \
             .filter(col("CustomerID").isNotNull()) \
             .withColumn("PurchaseOrderNumber", trim(col("PurchaseOrderNumber"))) \
@@ -47,6 +71,11 @@ class SilverTransformer:
             .withColumn("ShipMethod", trim(col("ShipMethod")))
 
     def _transform_salesorder_details(self, df_bronze):
+        """
+        Description: Transforma a tabela bronze de salesorder_details em tabela silver 
+        Input: df_bronze: dataframe da tabela bronze
+        Output: dataframe da tabela silver  
+        """
         return df_bronze.dropDuplicates(["SalesOrderID", "SalesOrderDetailID"]) \
             .filter(col("ProductID").isNotNull())
 

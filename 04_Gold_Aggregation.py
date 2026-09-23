@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# ///
 # DBTITLE 1,Import Libs
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import avg, col, count, countDistinct, sum as spark_sum, to_date
@@ -17,6 +21,11 @@ class GoldAggregator:
         self.catalog = catalog
 
     def _save_gold(self, df_gold, table_name: str):
+        """
+        Description: Salva um dataframe na camada Gold.
+        Input: df_gold (DataFrame), table_name (str)
+        Output: None
+        """
         tabela_gold = f"{self.catalog}.gold.{table_name}"
         self.spark.sql(f"CREATE SCHEMA IF NOT EXISTS {self.catalog}.gold")
         df_gold.write.format("delta").mode("overwrite").saveAsTable(tabela_gold)
@@ -24,6 +33,11 @@ class GoldAggregator:
         print(f"Tabela gold carregada com sucesso: {tabela_gold}")
 
     def build_customer_summary_by_company(self):
+        """
+        Description: Realiza a agregação de dados na tabela de customers.
+        Input: None
+        Output: None
+        """
         df_customers = self.spark.read.table(f"{self.catalog}.silver.adventureworks_customers")
 
         df_gold = df_customers.groupBy("CompanyName") \
@@ -33,6 +47,11 @@ class GoldAggregator:
         self._save_gold(df_gold, "customer_summary_by_company")
 
     def build_product_summary_by_color(self):
+        """
+        Description: Realiza a agregação de dados na tabela de products.
+        Input: None
+        Output: None
+        """
         df_products = self.spark.read.table(f"{self.catalog}.silver.adventureworks_products")
 
         df_gold = df_products.filter(col("Color").isNotNull()) \
@@ -46,6 +65,11 @@ class GoldAggregator:
         self._save_gold(df_gold, "product_summary_by_color")
 
     def build_sales_summary_by_customer(self):
+        """
+        Description: Realiza a agregação de dados na tabela de salesorder_headers.
+        Input: None
+        Output: None
+        """
         df_orders = self.spark.read.table(f"{self.catalog}.silver.adventureworks_salesorder_headers")
         df_customers = self.spark.read.table(f"{self.catalog}.silver.adventureworks_customers")
 
@@ -63,6 +87,11 @@ class GoldAggregator:
         self._save_gold(df_gold, "sales_summary_by_customer")
 
     def build_sales_summary_by_day(self):
+        """
+        Description: Realiza a agregação de dados na tabela de salesorder_headers.
+        Input: None
+        Output: None
+        """
         df_orders = self.spark.read.table(f"{self.catalog}.silver.adventureworks_salesorder_headers")
 
         df_gold = df_orders.withColumn("OrderDateKey", to_date(col("OrderDate"))) \

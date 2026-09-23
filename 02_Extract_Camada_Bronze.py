@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# ///
 # DBTITLE 1,Import Libs
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import current_timestamp
@@ -45,6 +49,11 @@ class BronzeIngestor:
         return DBUtils(self.spark)
 
     def _get_secret(self, primary_key: str, *fallback_keys: str) -> str:
+        """
+        Description: Método para obter o secret do dbutils
+        Input: primary_key, *fallback_keys
+        Output: secret  
+        """
         keys_to_try = [primary_key, *fallback_keys]
         last_error = None
 
