@@ -48,7 +48,7 @@ A configuração demonstrada utiliza o catálogo `db_lab_brq` e os schemas `bron
 | [`01_Step_by_step.py`](./01_Step_by_step.py) | Guia operacional detalhado do workshop, com validações esperadas após cada camada. |
 | [`02_Extract_Camada_Bronze.py`](./02_Extract_Camada_Bronze.py) | Leitura via JDBC e gravação das tabelas de origem na camada Bronze. |
 | [`03_Transform_Camada_Silver.py`](./03_Transform_Camada_Silver.py) | Limpeza, padronização, filtros de qualidade e deduplicação das tabelas Bronze. |
-| [`04_Gold_Aggregation.ipynb`](./04_Gold_Aggregation.ipynb) | Construção das tabelas agregadas para consumo analítico. |
+| [`04_Gold_Aggregation.py`](./04_Gold_Aggregation.py) | Construção das tabelas agregadas para consumo analítico. |
 
 Os arquivos `.py` usam a convenção de notebooks do Databricks (`# Databricks notebook source`, `# COMMAND ----------` e células `%md`). Portanto, devem ser importados ou executados em um workspace Databricks, e não tratados apenas como scripts Python convencionais.
 
@@ -218,7 +218,7 @@ Execute `03_Transform_Camada_Silver.py` e valide a publicação das cinco tabela
 
 ### 5. Executar Gold
 
-Execute `04_Gold_Aggregation.ipynb` e valide a criação das quatro tabelas agregadas no schema `db_lab_brq.gold`.
+Execute `04_Gold_Aggregation.py` e valide a criação das quatro tabelas agregadas no schema `db_lab_brq.gold`.
 
 ## Orquestração recomendada
 
